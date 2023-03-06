@@ -1,0 +1,118 @@
+$toto = 1
+while("$toto" -eq "1"){ 
+$test = Invoke-RestMethod -Uri "https://api.binance.com/api/v3/ticker/price" -Method get  
+$test | Select-String -Pattern "USDT" > test.csv
+$test2 = Get-Content -Path .\test.csv -Tail 10
+$test3 = "$test2".Split("=")[-2]
+$test6 = "$test2".Split("=")[-2]
+$toto = 2
+while("$test3" -eq "$test6"){
+$test = Invoke-RestMethod -Uri "https://api.binance.com/api/v3/ticker/price" -Method get  
+$test | Select-String -Pattern "USDT" > test.csv
+$test2 = Get-Content -Path .\test.csv -Tail 10
+$test6 = "$test2".Split("=")[-2].split(";")[-2]
+Write-Output($test6)
+Start-Sleep -s (60*4)
+}
+if("$test3" -ne "$test6") {
+$testi = Invoke-RestMethod -Uri "https://api.binance.com/api/v3/ticker/price?symbol=$test6" -Method get 
+Write-Output($test6)
+$valeur1 = $testi.price
+Write-Output($valeur1)
+$quantité = [int](50 / $valeur1)
+
+
+$APIKey = ""
+$APISecret = ""
+
+$TimeStamp = (Get-Date (Get-Date).ToUniversalTime() -UFormat %s).replace(',', '').replace('.', '').SubString(0,13)
+
+$QueryString = "symbol=$test6&side=BUY&type=MARKET&quantity=$quantité&timestamp=$TimeStamp&recvWindow=5000"
+
+$hmacsha = New-Object System.Security.Cryptography.HMACSHA256
+$hmacsha.key = [Text.Encoding]::ASCII.GetBytes($APISecret)
+$signature = $hmacsha.ComputeHash([Text.Encoding]::ASCII.GetBytes($QueryString))
+$signature = [System.BitConverter]::ToString($signature).Replace('-', '').ToLower()
+
+$uri = "https://api.binance.com/api/v3/order?$QueryString&signature=$signature"
+
+$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+$headers.Add("X-MBX-APIKEY",$APIKey)   
+
+try {
+
+    Invoke-RestMethod -Uri $uri -Headers $headers -Method POST
+   
+}
+
+catch {
+ 
+    $streamReader = [System.IO.StreamReader]::new($_.Exception.Response.GetResponseStream())
+    $ErrResp = $streamReader.ReadToEnd() | ConvertFrom-Json
+    $streamReader.Close()
+    $ErrResp
+    
+    Write-Host("error")
+}
+
+
+
+
+Start-Sleep -s (60*60)
+$test0 = Invoke-RestMethod -uri "https://api.binance.com/api/v3/ticker/price?symbol=$test6" -Method get
+$valeur2 = $test0.price
+Write-Output($valeur2)
+Start-Sleep -s (60*60*3)
+$testp = Invoke-RestMethod -uri "https://api.binance.com/api/v3/ticker/price?symbol=$test6" -Method get
+$valeur3 = $testp.price
+write-output($valeur3)
+
+$APIKey = ""
+$APISecret = ""
+
+$TimeStamp2 = (Get-Date (Get-Date).ToUniversalTime() -UFormat %s).replace(',', '').replace('.', '').SubString(0,13)
+
+$QueryString2 = "symbol=$test6&side=SELL&type=MARKET&quantity=$quantité&timestamp=$TimeStamp2&recvWindow=5000"
+
+$hmacsha2 = New-Object System.Security.Cryptography.HMACSHA256
+$hmacsha2.key = [Text.Encoding]::ASCII.GetBytes($APISecret)
+$signature2 = $hmacsha2.ComputeHash([Text.Encoding]::ASCII.GetBytes($QueryString2))
+$signature2 = [System.BitConverter]::ToString($signature2).Replace('-', '').ToLower()
+
+$uri2 = "https://api.binance.com/api/v3/order?$QueryString2&signature=$signature2"
+
+$headers2 = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+$headers2.Add("X-MBX-APIKEY",$APIKey)   
+
+try {
+
+    Invoke-RestMethod -Uri $uri2 -Headers $headers2 -Method POST
+   
+}
+
+catch {
+ 
+    $streamReader = [System.IO.StreamReader]::new($_.Exception.Response.GetResponseStream())
+    $ErrResp = $streamReader.ReadToEnd() | ConvertFrom-Json
+    $streamReader.Close()
+    $ErrResp
+    
+    Write-Host("error")
+}
+
+
+$mail = " 
+	paire: $test6
+	achat premier prix: $valeur1 quantité : $quantité
+	second prix: $valeur2
+	vente prix final: $valeur3 quantité: $quantité
+"
+$user = ''
+$password = ''
+[SecureString]$securepassword = $password | ConvertTo-SecureString -Asplaintext -force
+$credential = New-Object System.Management.Automation.PSCredential -ArgumentList $user, $securepassword
+Send-MailMessage -smtpserver smtp.gmail.com -port 587 -usessl -from @gmail.com -To @gmail.com -Subject 'test' -Body $mail -Credential $credential
+$toto = 1
+}
+}
+    
